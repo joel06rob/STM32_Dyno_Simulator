@@ -67,6 +67,15 @@ static void MX_USART2_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+//CAN Test
+CAN_TxHeaderTypeDef TxHeader;
+CAN_RxHeaderTypeDef RxHeader;
+
+uint8_t TxData[1];
+uint8_t RxData[1];
+
+uint32_t TxMailbox;
+
 //ADC Test
 uint16_t ADC_VAL = 0;
 uint8_t count = 0;
@@ -107,6 +116,20 @@ int main(void)
   MX_I2C1_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+
+
+  //Activate CAN and Activate CAN Interrupts
+  if (HAL_CAN_Start(&hcan1) != HAL_OK){
+  	  Error_Handler();
+  }
+
+  HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING | CAN_IT_ERROR | CAN_IT_LAST_ERROR_CODE | CAN_IT_BUSOFF);
+
+  //CAN Tx Data
+  TxHeader.DLC = 1; //Data length
+  TxHeader.IDE = CAN_ID_STD; //Standard length Identifier
+  TxHeader.RTR = CAN_RTR_DATA;
+  TxHeader.StdId = 0x446; //ID for the F446RE
 
   /* USER CODE END 2 */
 
@@ -389,7 +412,40 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+//EXTI User Button - Test CAN
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
+	if (GPIO_Pin == GPIO_PIN_13){
+
+		//CAN Data
+		TxData[0] = 12;
+
+		HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox);
+
+
+	}
+
+
+}
+
+//HANDLE CAN ERRORS
+void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(hcan);
+
+  /* NOTE : This function Should not be modified, when the callback is needed,
+            the HAL_CAN_ErrorCallback could be implemented in the user file
+   */
+  uint32_t error = HAL_CAN_GetError(hcan);
+
+  char msg[100];
+
+  sprintf(msg, "[STM32][ERROR] HAL error = 0x%08lX\r\n", error);
+
+  HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg),HAL_MAX_DELAY);
+
+}
 /* USER CODE END 4 */
 
 /**
