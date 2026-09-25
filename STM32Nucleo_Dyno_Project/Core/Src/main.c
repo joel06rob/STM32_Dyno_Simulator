@@ -126,7 +126,7 @@ int main(void)
   HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING | CAN_IT_ERROR | CAN_IT_LAST_ERROR_CODE | CAN_IT_BUSOFF);
 
   //CAN Tx Data
-  TxHeader.DLC = 1; //Data length
+  TxHeader.DLC = 2; //Data length
   TxHeader.IDE = CAN_ID_STD; //Standard length Identifier
   TxHeader.RTR = CAN_RTR_DATA;
   TxHeader.StdId = 0x446; //ID for the F446RE
@@ -152,8 +152,20 @@ int main(void)
 	HAL_UART_Transmit(&huart2,(uint8_t *)msg,strlen(msg),HAL_MAX_DELAY);
 
 
+	//CAN - Transmit and split ADC values
+	//
+	//
+	//Note: Shift first number by 8 bits (as its 16-bit) then mask to get value.
+	TxData[0] = (ADC_VAL >> 8) & 0xFF;
+	TxData[1] = ADC_VAL & 0xFF;
+
+	HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox);
+
+
 	HAL_Delay(500);
 	count++;
+
+
 
   }
   /* USER CODE END 3 */
