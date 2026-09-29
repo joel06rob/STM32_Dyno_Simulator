@@ -51,6 +51,18 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
+//TODO: Place in seperate file
+// DYNO States
+typedef enum
+{
+	DYNO_IDLE = 0,
+	DYNO_ACTIVE = 1,
+	DYNO_STOPPED = 2
+
+} DynoState_t;
+
+volatile DynoState_t DYNO_STATE;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -71,8 +83,11 @@ static void MX_USART2_UART_Init(void);
 CAN_TxHeaderTypeDef TxHeader;
 CAN_RxHeaderTypeDef RxHeader;
 
-uint8_t TxData[1];
-uint8_t RxData[1];
+CAN_TxHeaderTypeDef HandshakeTxHeader;
+
+uint8_t HandshakeTxData[1];
+uint8_t TxData[8];
+uint8_t RxData[8];
 
 uint32_t TxMailbox;
 
@@ -123,13 +138,25 @@ int main(void)
   	  Error_Handler();
   }
 
-  HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING | CAN_IT_ERROR | CAN_IT_LAST_ERROR_CODE | CAN_IT_BUSOFF);
+  HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING| CAN_IT_TX_MAILBOX_EMPTY | CAN_IT_ERROR | CAN_IT_LAST_ERROR_CODE | CAN_IT_BUSOFF);
 
-  //CAN Tx Data
+  DYNO_STATE = DYNO_IDLE;
+
+  //================
+  //CAN ENGINE HEADER
+  //================
   TxHeader.DLC = 2; //Data length
   TxHeader.IDE = CAN_ID_STD; //Standard length Identifier
   TxHeader.RTR = CAN_RTR_DATA;
   TxHeader.StdId = 0x446; //ID for the F446RE
+
+  //================
+  //CAN HANDSHAKE HEADER
+  //================
+  HandshakeTxHeader.DLC = 1;
+  HandshakeTxHeader.IDE = CAN_ID_STD;
+  HandshakeTxHeader.RTR = CAN_RTR_DATA;
+  HandshakeTxHeader.StdId = 0x100;
 
   /* USER CODE END 2 */
 
@@ -141,29 +168,34 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	//ADC Test
-	HAL_ADC_Start(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 100);
-	ADC_VAL = HAL_ADC_GetValue(&hadc1);
-	HAL_ADC_Stop(&hadc1);
+	//TODO: Refactor this DYNO code
+	if(DYNO_STATE == DYNO_ACTIVE)
+	{
+		HAL_ADC_Start(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, 100);
+		ADC_VAL = HAL_ADC_GetValue(&hadc1);
+		HAL_ADC_Stop(&hadc1);
 
-	//UART Print values
-	sprintf(msg, "[ADC] Value = %u\r\n", ADC_VAL);
-	HAL_UART_Transmit(&huart2,(uint8_t *)msg,strlen(msg),HAL_MAX_DELAY);
-
-
-	//CAN - Transmit and split ADC values
-	//
-	//
-	//Note: Shift first number by 8 bits (as its 16-bit) then mask to get value.
-	TxData[0] = (ADC_VAL >> 8) & 0xFF;
-	TxData[1] = ADC_VAL & 0xFF;
-
-	HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox);
+		//UART Print values
+		sprintf(msg, "[ADC] Value = %u\r\n", ADC_VAL);
+		HAL_UART_Transmit(&huart2,(uint8_t *)msg,strlen(msg),HAL_MAX_DELAY);
 
 
-	HAL_Delay(500);
-	count++;
+		//CAN - Transmit and split ADC values
+		//
+		//
+		//Note: Shift first number by 8 bits (as its 16-bit) then mask to get value.
+		TxData[0] = (ADC_VAL >> 8) & 0xFF;
+		TxData[1] = ADC_VAL & 0xFF;
+
+		HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox);
+
+		HAL_Delay(500);
+		count++;
+	}
+
+
+
 
 
 
@@ -312,10 +344,13 @@ static void MX_CAN1_Init(void)
   //CAN Filter Config (Rx)
   CAN_FilterTypeDef canfilterconfig;
 
+  //********************
+  //FILTER 1 - Handshake 0x100
+
   canfilterconfig.FilterActivation = CAN_FILTER_ENABLE; //Activate Filter
   canfilterconfig.FilterBank = 10;  // anything between 0 to SlaveStartFilterBank
   canfilterconfig.FilterFIFOAssignment = CAN_RX_FIFO0; //Any CAN frame msg that passes filter is placed in this buffer
-  canfilterconfig.FilterIdHigh = 0x101<<5; //Filter only the Uno Q ID (101)
+  canfilterconfig.FilterIdHigh = 0x100<<5; //Filter only the Uno Q ID (101)
   canfilterconfig.FilterIdLow = 0x0000;
   canfilterconfig.FilterMaskIdHigh = 0x7FF<<5; //11 Bits
   canfilterconfig.FilterMaskIdLow = 0x0000;
@@ -324,6 +359,15 @@ static void MX_CAN1_Init(void)
   canfilterconfig.SlaveStartFilterBank = 20;  // 13 to 27 are assigned to slave CAN (CAN 2) OR 0 to 12 are assgned to CAN1
 
   HAL_CAN_ConfigFilter(&hcan1, &canfilterconfig);
+
+  //********************
+  //FILTER 2 - Dyno Data 0x101
+
+  canfilterconfig.FilterBank = 11;
+  canfilterconfig.FilterIdHigh = 0x101<<5;
+
+  HAL_CAN_ConfigFilter(&hcan1, &canfilterconfig);
+
   /* USER CODE END CAN1_Init 2 */
 
 }
@@ -440,16 +484,41 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-//TODO: EXTI - User button (Initialise Dyno Start - CAN Handshake)
+//EXTI - User button (Initialise Dyno Start - CAN Handshake)
+//TODO: Remove UART HAL_MAX_DELAY From Interrupt
+//TODO: Send a CAN message to Arduino to signal the stoppage of the Dyno
+//TODO: Add basic helper functions to refactor messy UART and printing code
 //
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
 	if (GPIO_Pin == GPIO_PIN_13){
 
-		//CAN Data
-		TxData[0] = 12;
+		//If the Dyno is Active after pressing, Stop the Dyno
+		if (DYNO_STATE == DYNO_ACTIVE){
 
-		HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox);
+			DYNO_STATE = DYNO_STOPPED;
+
+			return;
+		}
+
+		HAL_StatusTypeDef canStatus;
+
+		//CAN Data
+		HandshakeTxData[0] = 1;
+
+		canStatus = HAL_CAN_AddTxMessage(&hcan1, &HandshakeTxHeader, HandshakeTxData, &TxMailbox);
+
+		if (canStatus == HAL_OK){
+
+			//UART - Successful CAN Tx
+			sprintf(msg, "[STM32]CAN DYNO HANDSHAKE SENT: ID=0x%03lX DLC=%lu DATA=%02X Mailbox=%lu\r\n", HandshakeTxHeader.StdId, HandshakeTxHeader.DLC, HandshakeTxData[0], TxMailbox);
+		}
+		else{
+			//UART - Error
+			sprintf(msg, "[STM32][ERROR] HAL Status=%d CAN Error=0x%08lX\r\n", canStatus, HAL_CAN_GetError(&hcan1));
+		}
+
+		HAL_UART_Transmit(&huart2,(uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
 
 
 	}
@@ -471,6 +540,12 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
   if (HAL_CAN_GetRxMessage(&hcan1, CAN_RX_FIFO0, &RxHeader, RxData) == HAL_OK){
 
+	  //Handshake - Dyno Start
+	  if(RxHeader.StdId == 0x100){
+
+		  DYNO_STATE = DYNO_ACTIVE;
+
+	  }
 	  sprintf(msg, "[UNOQ][CAN RX] ID=0x%03lX DLC=%lu DATA=%02X %02X\r\n", RxHeader.StdId, RxHeader.DLC, RxData[0], RxData[1]);
 
   }
@@ -478,7 +553,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
 	  sprintf(msg, "[STM32][ERROR] Rx Error=0x%08lX\r\n", HAL_CAN_GetError(&hcan1));
   }
-
 
 
   HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
@@ -502,6 +576,38 @@ void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
   HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg),HAL_MAX_DELAY);
 
 }
+
+//CAN MAILBOXES - CHECKING FOR MESSAGES SENT FROM STM32
+void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(hcan);
+
+  /* NOTE : This function Should not be modified, when the callback is needed,
+            the HAL_CAN_TxMailbox0CompleteCallback could be implemented in the
+            user file
+   */
+
+  	  char msg[] = "[STM32][CAN TX COMPLETE] Mailbox 0\r\n";
+
+      HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+}
+
+void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(hcan);
+
+  /* NOTE : This function Should not be modified, when the callback is needed,
+            the HAL_CAN_TxMailbox0CompleteCallback could be implemented in the
+            user file
+   */
+
+  	 char msg[] = "[STM32][CAN TX COMPLETE] Mailbox 1\r\n";
+
+     HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+}
+
 /* USER CODE END 4 */
 
 /**
