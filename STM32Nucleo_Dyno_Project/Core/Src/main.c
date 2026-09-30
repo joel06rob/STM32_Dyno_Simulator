@@ -73,7 +73,7 @@ static void MX_CAN1_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
-
+uint8_t THROTTLE_ADC_Conversion(uint16_t ADC_VALUE);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -94,6 +94,8 @@ uint32_t TxMailbox;
 //ADC Test
 uint16_t ADC_VAL = 0;
 uint8_t count = 0;
+uint8_t Throttle_Percent;
+
 char msg[100];
 /* USER CODE END 0 */
 
@@ -175,6 +177,9 @@ int main(void)
 		HAL_ADC_PollForConversion(&hadc1, 100);
 		ADC_VAL = HAL_ADC_GetValue(&hadc1);
 		HAL_ADC_Stop(&hadc1);
+
+		//Throttle - Convert ADC Values
+		Throttle_Percent = THROTTLE_ADC_Conversion(ADC_VAL);
 
 		//UART Print values
 		sprintf(msg, "[ADC] Value = %u\r\n", ADC_VAL);
@@ -484,6 +489,22 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+//=============================================================
+//THROTTLE - Convert ADC to Throttle Percentage
+//TODO: Refactor this into a seperate file
+
+uint8_t THROTTLE_ADC_Conversion(uint16_t ADC_VALUE){
+
+	//Get the percentage value of the max ADC
+	uint8_t ADC_Percentage;
+
+	ADC_Percentage = ((uint32_t)ADC_VALUE * 100) / 4095;
+
+	return ADC_Percentage;
+}
+
+
+//=============================================================
 //EXTI - User button (Initialise Dyno Start - CAN Handshake)
 //TODO: Remove UART HAL_MAX_DELAY From Interrupt
 //TODO: Send a CAN message to Arduino to signal the stoppage of the Dyno
@@ -526,6 +547,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 
 }
 
+//=============================================================
 //CAN RECEIVE - Callback for receiving messages
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
@@ -558,6 +580,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
   HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
 }
 
+//=============================================================
 //HANDLE CAN ERRORS
 void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
 {
