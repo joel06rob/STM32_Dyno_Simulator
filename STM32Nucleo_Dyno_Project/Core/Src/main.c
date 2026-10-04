@@ -35,6 +35,12 @@
 #define ENGINE_IDLE_RPM 850
 #define ENGINE_REDLINE_RPM 6800
 #define ENGINE_MAX_RPM 7000
+
+#define ENGINE_COLD_TEMP 20
+#define ENGINE_NORMAL_TEMP 90
+#define ENGINE_HIGH_TEMP 105
+#define ENGINE_MAX_TEMP 120
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -77,6 +83,7 @@ static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 uint8_t THROTTLE_ADC_Conversion(uint16_t ADC_VALUE);
 uint16_t ENGINE_RPM_Calculation(uint8_t throttle);
+uint8_t ENGINE_TEMP_Calculation(uint16_t rpm);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -99,6 +106,7 @@ uint16_t ADC_VAL = 0;
 uint8_t count = 0;
 uint8_t Throttle_Percent;
 uint16_t Engine_RPM;
+uint8_t Engine_Temp = ENGINE_COLD_TEMP;
 
 char msg[100];
 /* USER CODE END 0 */
@@ -186,6 +194,8 @@ int main(void)
 		Throttle_Percent = THROTTLE_ADC_Conversion(ADC_VAL);
 		//RPM - Convert Throttle to RPM
 		Engine_RPM = ENGINE_RPM_Calculation(Throttle_Percent);
+		//Temperature - Calculate temperature
+		Engine_Temp = ENGINE_TEMP_Calculation(Engine_RPM);
 
 		//UART Print values
 		sprintf(msg, "[ADC] Value = %u\r\n", ADC_VAL);
@@ -523,6 +533,35 @@ uint16_t ENGINE_RPM_Calculation(uint8_t throttle){
 	return RPM_Value;
 }
 
+
+//=============================================================
+//TEMPERATURE - Calculate engine temperature
+//TODO: Make more accurate
+uint8_t ENGINE_TEMP_Calculation(uint16_t rpm){
+
+	if (rpm > 5000){
+
+		if (Engine_Temp < ENGINE_HIGH_TEMP){
+
+			Engine_Temp++;
+		}
+	}
+	else{
+
+		if (Engine_Temp < ENGINE_NORMAL_TEMP){
+
+			Engine_Temp++;
+		}
+		else if (Engine_Temp > ENGINE_NORMAL_TEMP){
+
+			Engine_Temp--;
+		}
+
+	}
+
+	return Engine_Temp;
+
+}
 
 //=============================================================
 //EXTI - User button (Initialise Dyno Start - CAN Handshake)
