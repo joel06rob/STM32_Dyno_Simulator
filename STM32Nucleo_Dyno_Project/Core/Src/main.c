@@ -32,7 +32,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define ENGINE_IDLE_RPM 850
+#define ENGINE_REDLINE_RPM 6800
+#define ENGINE_MAX_RPM 7000
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -74,6 +76,7 @@ static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 uint8_t THROTTLE_ADC_Conversion(uint16_t ADC_VALUE);
+uint16_t ENGINE_RPM_Calculation(uint8_t throttle);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -95,6 +98,7 @@ uint32_t TxMailbox;
 uint16_t ADC_VAL = 0;
 uint8_t count = 0;
 uint8_t Throttle_Percent;
+uint16_t Engine_RPM;
 
 char msg[100];
 /* USER CODE END 0 */
@@ -180,6 +184,8 @@ int main(void)
 
 		//Throttle - Convert ADC Values
 		Throttle_Percent = THROTTLE_ADC_Conversion(ADC_VAL);
+		//RPM - Convert Throttle to RPM
+		Engine_RPM = ENGINE_RPM_Calculation(Throttle_Percent);
 
 		//UART Print values
 		sprintf(msg, "[ADC] Value = %u\r\n", ADC_VAL);
@@ -501,6 +507,20 @@ uint8_t THROTTLE_ADC_Conversion(uint16_t ADC_VALUE){
 	ADC_Percentage = ((uint32_t)ADC_VALUE * 100) / 4095;
 
 	return ADC_Percentage;
+}
+
+
+//=============================================================
+//RPM - Convert throttle to RPM
+//TODO: Refactor this into a seperate file
+//TODO: Make RPM increase/decrease more leisurely (Instead of sudden jumps)
+uint16_t ENGINE_RPM_Calculation(uint8_t throttle){
+
+	uint16_t RPM_Value;
+
+	RPM_Value = ENGINE_IDLE_RPM + ((uint32_t)throttle * (ENGINE_REDLINE_RPM - ENGINE_IDLE_RPM)) / 100;
+
+	return RPM_Value;
 }
 
 
