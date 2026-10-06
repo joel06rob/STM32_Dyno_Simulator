@@ -84,6 +84,7 @@ static void MX_USART2_UART_Init(void);
 uint8_t THROTTLE_ADC_Conversion(uint16_t ADC_VALUE);
 uint16_t ENGINE_RPM_Calculation(uint8_t throttle);
 uint8_t ENGINE_TEMP_Calculation(uint16_t rpm);
+void CAN_SendEngineData(uint8_t throttle, uint16_t rpm, uint8_t temp);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -196,6 +197,8 @@ int main(void)
 		Engine_RPM = ENGINE_RPM_Calculation(Throttle_Percent);
 		//Temperature - Calculate temperature
 		Engine_Temp = ENGINE_TEMP_Calculation(Engine_RPM);
+
+		CAN_SendEngineData(Throttle_Percent, Engine_RPM, Engine_Temp);
 
 		//UART Print values
 		sprintf(msg, "[ADC] Value = %u\r\n", ADC_VAL);
@@ -561,6 +564,24 @@ uint8_t ENGINE_TEMP_Calculation(uint16_t rpm){
 
 	return Engine_Temp;
 
+}
+
+
+//=============================================================
+//TRANSMIT - SEND ENGINE DATA TO ARDUINO
+//TODO: Refactor
+void CAN_SendEngineData(uint8_t throttle, uint16_t rpm, uint8_t temp){
+
+	uint8_t data[4];
+
+	data[0] = throttle;
+
+	data[1] = (rpm >> 8) & 0xFF;
+	data[2] = rpm & 0xFF;
+
+	data[3] = temp;
+
+	HAL_CAN_AddTxMessage(&hcan1, &TxHeader, data, &TxMailbox);
 }
 
 //=============================================================
