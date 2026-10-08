@@ -96,6 +96,8 @@ CAN_RxHeaderTypeDef RxHeader;
 
 CAN_TxHeaderTypeDef HandshakeTxHeader;
 
+CAN_TxHeaderTypeDef EngineTxHeader;
+
 uint8_t HandshakeTxData[1];
 uint8_t TxData[8];
 uint8_t RxData[8];
@@ -158,7 +160,7 @@ int main(void)
   DYNO_STATE = DYNO_IDLE;
 
   //================
-  //CAN ENGINE HEADER
+  //STM32 HEADER
   //================
   TxHeader.DLC = 2; //Data length
   TxHeader.IDE = CAN_ID_STD; //Standard length Identifier
@@ -172,6 +174,14 @@ int main(void)
   HandshakeTxHeader.IDE = CAN_ID_STD;
   HandshakeTxHeader.RTR = CAN_RTR_DATA;
   HandshakeTxHeader.StdId = 0x100;
+
+  //================
+  //ENGINE HEADER
+  //================
+  EngineTxHeader.StdId = 0x200;
+  EngineTxHeader.IDE = CAN_ID_STD;
+  EngineTxHeader.RTR = CAN_RTR_DATA;
+  EngineTxHeader.DLC = 4;
 
   /* USER CODE END 2 */
 
@@ -581,7 +591,7 @@ void CAN_SendEngineData(uint8_t throttle, uint16_t rpm, uint8_t temp){
 
 	data[3] = temp;
 
-	HAL_CAN_AddTxMessage(&hcan1, &TxHeader, data, &TxMailbox);
+	HAL_CAN_AddTxMessage(&hcan1, &EngineTxHeader, data, &TxMailbox);
 }
 
 //=============================================================
