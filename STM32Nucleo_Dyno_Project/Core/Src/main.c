@@ -103,6 +103,7 @@ uint8_t THROTTLE_ADC_Conversion(uint16_t ADC_VALUE);
 uint16_t ENGINE_RPM_Calculation(uint8_t throttle);
 uint8_t ENGINE_TEMP_Calculation(uint16_t rpm);
 void CAN_SendEngineData(uint8_t throttle, uint16_t rpm, uint8_t temp);
+void UART_SendDashboardData(uint8_t throttle, uint16_t rpm, uint8_t temp, uint16_t torque, uint16_t bhp);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -237,12 +238,31 @@ int main(void)
 		//================================
 		if (DYNO_DATA == DYNO_DATA_RECEIVED){
 
+			uint8_t throttle;
+			uint16_t rpm;
+			uint8_t temp;
+		    uint16_t torque;
+		    uint16_t bhp;
+
+		    uint32_t primask = __get_PRIMASK();
+		    __disable_irq();
+
+		    throttle = Rx_Throttle;
+		    rpm = Rx_RPM;
+		    temp = Rx_Temp;
+		    torque = Rx_Torque;
+		    bhp = Rx_BHP;
+
 			DYNO_DATA = DYNO_DATA_AWAITING;
+
+			__set_PRIMASK(primask);
+
+			UART_SendDashboardData(throttle, rpm, temp, torque, bhp);
 		}
 
 		//UART Print values
-		sprintf(msg, "[ADC] Value = %u\r\n", ADC_VAL);
-		HAL_UART_Transmit(&huart2,(uint8_t *)msg,strlen(msg),HAL_MAX_DELAY);
+		//sprintf(msg, "[ADC] Value = %u\r\n", ADC_VAL);
+		//HAL_UART_Transmit(&huart2,(uint8_t *)msg,strlen(msg),HAL_MAX_DELAY);
 
 
 		//CAN - Transmit and split ADC values
@@ -622,6 +642,21 @@ void CAN_SendEngineData(uint8_t throttle, uint16_t rpm, uint8_t temp){
 	data[3] = temp;
 
 	HAL_CAN_AddTxMessage(&hcan1, &EngineTxHeader, data, &TxMailbox);
+}
+
+//=============================================================
+//UART TRANSMIT - SEND ENGINE + DYNO DATA TO UART/SERIAL
+void UART_SendDashboardData(uint8_t throttle, uint16_t rpm, uint8_t temp, uint16_t torque, uint16_t bhp){
+
+	char buffer[100];
+
+	int length = snprintf(buffer, sizeof(buffer), "THR=%u,RPM=%u,TEMP=%u,TORQUE=%u,BHP=%u\r\n", throttle, rpm, temp, torque, bhp);
+
+	if (length > 0 && length < (int)sizeof(buffer)){
+
+		HAL_UART_Transmit(&huart2, (uint8_t *)buffer, (uint16_t)length, 100);
+	}
+
 }
 
 //=============================================================
