@@ -60,7 +60,7 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 
 //TODO: Place in seperate file
-// DYNO States
+//DYNO States
 typedef enum
 {
 	DYNO_IDLE = 0,
@@ -70,6 +70,24 @@ typedef enum
 } DynoState_t;
 
 volatile DynoState_t DYNO_STATE;
+
+//DYNO Data states
+typedef enum
+{
+	DYNO_DATA_AWAITING = 0,
+	DYNO_DATA_RECEIVED = 1
+
+} DynoData_t;
+
+volatile DynoData_t DYNO_DATA = DYNO_DATA_AWAITING;
+
+//CAN RX Engine and Dyno initialisation
+volatile uint8_t Rx_Throttle;
+volatile uint16_t Rx_RPM;
+volatile uint8_t Rx_Temp;
+volatile uint16_t Rx_Torque;
+volatile uint16_t Rx_BHP;
+
 
 /* USER CODE END PV */
 
@@ -104,12 +122,15 @@ uint8_t RxData[8];
 
 uint32_t TxMailbox;
 
-//ADC Test
+//ADC
 uint16_t ADC_VAL = 0;
 uint8_t count = 0;
+
+//Engine initialisation
 uint8_t Throttle_Percent;
 uint16_t Engine_RPM;
 uint8_t Engine_Temp = ENGINE_COLD_TEMP;
+
 
 char msg[100];
 /* USER CODE END 0 */
@@ -209,6 +230,15 @@ int main(void)
 		Engine_Temp = ENGINE_TEMP_Calculation(Engine_RPM);
 
 		CAN_SendEngineData(Throttle_Percent, Engine_RPM, Engine_Temp);
+
+
+		//================================
+		//TRANSMIT DATA TO SERIAL PORT
+		//================================
+		if (DYNO_DATA == DYNO_DATA_RECEIVED){
+
+			DYNO_DATA = DYNO_DATA_AWAITING;
+		}
 
 		//UART Print values
 		sprintf(msg, "[ADC] Value = %u\r\n", ADC_VAL);
@@ -653,12 +683,26 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
   if (HAL_CAN_GetRxMessage(&hcan1, CAN_RX_FIFO0, &RxHeader, RxData) == HAL_OK){
 
 	  //Handshake - Dyno Start
-	  if(RxHeader.StdId == 0x100){
+	  if (RxHeader.StdId == 0x100){
 
 		  DYNO_STATE = DYNO_ACTIVE;
-
+		  sprintf(msg, "[UNOQ][CAN RX] ID=0x%03lX DLC=%lu DATA=%02X %02X\r\n", RxHeader.StdId, RxHeader.DLC, RxData[0], RxData[1]);
 	  }
-	  sprintf(msg, "[UNOQ][CAN RX] ID=0x%03lX DLC=%lu DATA=%02X %02X\r\n", RxHeader.StdId, RxHeader.DLC, RxData[0], RxData[1]);
+	  //Engine and Dyno data
+	  if (RxHeader.StdId == 0x101 && RxHeader.DLC == 8){
+
+		  //Data
+		  Rx_Throttle = RxData[0];
+		  Rx_RPM = ((uint16_t)RxData[1] << 8) | RxData[2];
+		  Rx_Temp = RxData[3];
+		  Rx_Torque = ((uint16_t)RxData[4] << 8) | RxData[5];
+		  Rx_BHP = ((uint16_t)RxData[6] << 8) | RxData[7];
+
+
+		  //Set Dyno data state to received
+		  DYNO_DATA = DYNO_DATA_RECEIVED;
+	  }
+
 
   }
   else{
