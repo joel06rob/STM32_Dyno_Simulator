@@ -713,7 +713,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
             the HAL_CAN_RxFifo0MsgPendingCallback could be implemented in the
             user file
    */
-  char msg[150];
 
   if (HAL_CAN_GetRxMessage(&hcan1, CAN_RX_FIFO0, &RxHeader, RxData) == HAL_OK){
 
@@ -721,7 +720,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	  if (RxHeader.StdId == 0x100){
 
 		  DYNO_STATE = DYNO_ACTIVE;
-		  sprintf(msg, "[UNOQ][CAN RX] ID=0x%03lX DLC=%lu DATA=%02X %02X\r\n", RxHeader.StdId, RxHeader.DLC, RxData[0], RxData[1]);
+
 	  }
 	  //Engine and Dyno data
 	  if (RxHeader.StdId == 0x101 && RxHeader.DLC == 8){
@@ -742,11 +741,15 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
   }
   else{
 
+	  char msg[150];
+
 	  sprintf(msg, "[STM32][ERROR] Rx Error=0x%08lX\r\n", HAL_CAN_GetError(&hcan1));
+
+	  HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
   }
 
 
-  HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+
 }
 
 //=============================================================
