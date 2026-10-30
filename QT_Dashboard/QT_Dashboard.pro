@@ -1,4 +1,4 @@
-QT += widgets
+QT += widgets charts
 
 CONFIG += c++17
 
