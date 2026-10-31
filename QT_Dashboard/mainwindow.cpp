@@ -45,6 +45,8 @@ MainWindow::MainWindow(QWidget *parent)
     chart->createDefaultAxes();
 
     chart->setTitle("Sensor Data");
+    chart->setBackgroundBrush(QColor(38,38,38));
+    chart->setTitleBrush(QColor(255,255,255));
 
 
     //Display QChart on window
