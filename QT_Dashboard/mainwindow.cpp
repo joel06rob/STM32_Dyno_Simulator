@@ -13,6 +13,37 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    //=============================
+    //TEST: Serial port
+    serial = new QSerialPort(this);
+
+    //Serial configs
+    serial->setPortName("/dev/tty.usbmodem103");
+    serial->setBaudRate(QSerialPort::Baud115200);
+    serial->setDataBits(QSerialPort::Data8);
+    serial->setParity(QSerialPort::NoParity);
+    serial->setStopBits(QSerialPort::OneStop);
+    serial->setFlowControl(QSerialPort::NoFlowControl);
+
+    //Serial connect readyRead - Whenever serial emits a read signal call the readSerialData() on this MainWindow
+    connect(serial, &QSerialPort::readyRead, this, &MainWindow::readSerialData);
+
+    //Open serial port
+    if (serial->open(QIODevice::ReadOnly)){
+
+        qDebug() << "Serial port open!";
+
+    }
+    else{
+
+        qDebug() << "Serial port error!" << serial->errorString();
+
+    }
+
+
+
+
+
     //TEST: Line 1
     QLineSeries *series1 = new QLineSeries();
     series1->setName("Temperature");
@@ -62,6 +93,13 @@ MainWindow::MainWindow(QWidget *parent)
     ui->rpmLabel->setText("4500");
     ui->tempLabel->setText("92 *C");
     ui->powerLabel->setText("200 BHP");
+}
+
+void MainWindow::readSerialData()
+{
+    QByteArray data = serial->readAll();
+
+    qDebug() << "Received:" << data;
 }
 
 MainWindow::~MainWindow()

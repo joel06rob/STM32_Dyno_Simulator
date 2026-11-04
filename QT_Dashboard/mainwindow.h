@@ -2,6 +2,8 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QSerialPort>
+#include <QDebug>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -19,5 +21,7 @@ public:
 
 private:
     Ui::MainWindow *ui;
+    QSerialPort *serial;
+    void readSerialData();
 };
 #endif // MAINWINDOW_H
