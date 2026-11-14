@@ -262,7 +262,7 @@ int main(void)
 
 		//UART Print values
 		//sprintf(msg, "[ADC] Value = %u\r\n", ADC_VAL);
-		//HAL_UART_Transmit(&huart2,(uint8_t *)msg,strlen(msg),HAL_MAX_DELAY);
+		//HAL_UART_Transmit(&huart2,(uint8_t *)msg,strlen(msg),HAL_MAX_DELAY);;
 
 
 		//CAN - Transmit and split ADC values
