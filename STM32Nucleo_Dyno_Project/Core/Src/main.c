@@ -694,7 +694,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 			sprintf(msg, "[STM32][ERROR] HAL Status=%d CAN Error=0x%08lX\r\n", canStatus, HAL_CAN_GetError(&hcan1));
 		}
 
-		HAL_UART_Transmit(&huart2,(uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+		//HAL_UART_Transmit(&huart2,(uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
 
 
 	}
@@ -745,7 +745,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
 	  sprintf(msg, "[STM32][ERROR] Rx Error=0x%08lX\r\n", HAL_CAN_GetError(&hcan1));
 
-	  HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+	  //HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
   }
 
 
@@ -768,7 +768,7 @@ void HAL_CAN_ErrorCallback(CAN_HandleTypeDef *hcan)
 
   sprintf(msg, "[STM32][ERROR] HAL error = 0x%08lX\r\n", error);
 
-  HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg),HAL_MAX_DELAY);
+  //HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg),HAL_MAX_DELAY);
 
 }
 
@@ -785,7 +785,7 @@ void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
 
   	  char msg[] = "[STM32][CAN TX COMPLETE] Mailbox 0\r\n";
 
-      HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+      //HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
 }
 
 void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
@@ -800,7 +800,7 @@ void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
 
   	 char msg[] = "[STM32][CAN TX COMPLETE] Mailbox 1\r\n";
 
-     HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+     //HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
 }
 
 /* USER CODE END 4 */
