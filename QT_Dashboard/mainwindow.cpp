@@ -97,9 +97,25 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::readSerialData()
 {
-    QByteArray data = serial->readAll();
+    //Add received bytes to buffer
+    serialBuffer.append(serial->readAll());
 
-    qDebug() << "Received:" << data;
+    //Loop through received bytes - splitting on new line character (end of msg)
+    while (serialBuffer.contains('\n')){
+
+        int newlineIndex = serialBuffer.indexOf('\n');
+
+        //Get the full message from start to new line char
+        QByteArray line = serialBuffer.left(newlineIndex);
+
+        //Remove extracted msg
+        serialBuffer.remove(0, newlineIndex + 1);
+
+        //Store the full message line as a string
+        QString msg = QString::fromUtf8(line).trimmed();
+
+        qDebug().noquote() << "Received: " << msg;
+    }
 }
 
 MainWindow::~MainWindow()

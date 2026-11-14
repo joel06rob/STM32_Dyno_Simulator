@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QSerialPort>
 #include <QDebug>
+#include <QByteArray>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -22,6 +23,8 @@ public:
 private:
     Ui::MainWindow *ui;
     QSerialPort *serial;
+    QByteArray serialBuffer;
+
     void readSerialData();
 };
 #endif // MAINWINDOW_H
