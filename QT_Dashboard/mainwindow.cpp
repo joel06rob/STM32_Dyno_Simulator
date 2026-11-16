@@ -114,7 +114,30 @@ void MainWindow::readSerialData()
         //Store the full message line as a string
         QString msg = QString::fromUtf8(line).trimmed();
 
-        qDebug().noquote() << "Received: " << msg;
+        //qDebug().noquote() << "Received: " << msg;
+
+        //Extract each data value from msg
+        QStringList parts = msg.split(',');
+
+        if (parts.size() != 5){
+            qDebug() << "Invalid telemetry message:" << msg;
+            continue;
+        }
+
+        //Extract each individual data piece
+
+        int throttleData = parts[0].section('=', 1, 1).toInt();
+        int rpmData = parts[1].section('=', 1, 1).toInt();
+        int tempData = parts[2].section('=', 1, 1).toInt();
+        int torqueData = parts[3].section('=', 1, 1).toInt();
+        int bhpData = parts[4].section('=', 1, 1).toInt();
+
+
+        qDebug() << "Throttle: " << throttleData;
+        qDebug() << "RPM: " << rpmData;
+        qDebug() << "Temp: " << tempData;
+        qDebug() << "Torque: " << torqueData;
+        qDebug() << "BHP: " << bhpData;
     }
 }
 
