@@ -138,6 +138,10 @@ void MainWindow::readSerialData()
         qDebug() << "Temp: " << tempData;
         qDebug() << "Torque: " << torqueData;
         qDebug() << "BHP: " << bhpData;
+
+        ui->rpmLabel->setText(QString::number(rpmData));
+        ui->tempLabel->setText(QString::number(tempData));
+        ui->powerLabel->setText(QString::number(bhpData));
     }
 }
 
